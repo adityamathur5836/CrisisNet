@@ -93,6 +93,66 @@ class CrisisNetEnv:
         }
 
     # ------------------------------------------------------------------ #
+    #  Simulation Step                                                     #
+    # ------------------------------------------------------------------ #
+
+    def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool]:
+        """
+        Advance the simulation by one time step.
+
+        Currently applies minimal health-degradation logic:
+            - 20% of injured become critical
+            - 30% of critical become deceased
+
+        Args:
+            action: An action dictionary (validated externally).
+                    Not yet used — reserved for future expansion.
+
+        Returns:
+            A tuple of (state, reward, done):
+                state  – the new environment state.
+                reward – negative of total new deaths this step.
+                done   – True if time has reached max_time.
+        """
+        self.time += 1
+
+        # --- health degradation across all zones --- #
+        total_new_deaths = 0
+        for zone in self.zones:
+            new_deaths = self._tick_health(zone)
+            total_new_deaths += new_deaths
+
+        reward = -float(total_new_deaths)
+        done = self.time >= self.max_time
+        state = self.get_state()
+
+        return state, reward, done
+
+    @staticmethod
+    def _tick_health(zone: dict[str, Any]) -> int:
+        """
+        Apply one tick of health degradation to a zone.
+
+        Transitions:
+            injured  → critical  (20%)
+            critical → deceased  (30%)
+
+        Returns:
+            Number of new deaths this tick.
+        """
+        # critical → deceased (process first to avoid double-counting)
+        new_deceased = int(zone["critical"] * 0.30)
+        zone["critical"] -= new_deceased
+        zone["deceased"] += new_deceased
+
+        # injured → critical
+        new_critical = int(zone["injured"] * 0.20)
+        zone["injured"] -= new_critical
+        zone["critical"] += new_critical
+
+        return new_deceased
+
+    # ------------------------------------------------------------------ #
     #  State Observation                                                   #
     # ------------------------------------------------------------------ #
 
