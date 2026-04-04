@@ -100,9 +100,17 @@ class CrisisNetEnv:
         """
         Advance the simulation by one time step.
 
-        Currently applies minimal health-degradation logic:
-            - 20% of injured become critical
-            - 30% of critical become deceased
+        Population dynamics depend on whether a medical team is present
+        in each zone:
+
+        Without medical team:
+            - 20% injured  → critical
+            - 30% critical → deceased
+
+        With medical team:
+            - 40% injured  → healthy   (healing)
+            - 60% critical → injured   (stabilisation)
+            - 10% critical → deceased  (reduced death rate)
 
         Args:
             action: An action dictionary (validated externally).
@@ -111,46 +119,86 @@ class CrisisNetEnv:
         Returns:
             A tuple of (state, reward, done):
                 state  – the new environment state.
-                reward – negative of total new deaths this step.
+                reward – weighted score: +20 per heal, −50 per death.
                 done   – True if time has reached max_time.
         """
         self.time += 1
 
-        # --- health degradation across all zones --- #
-        total_new_deaths = 0
-        for zone in self.zones:
-            new_deaths = self._tick_health(zone)
-            total_new_deaths += new_deaths
+        # --- population dynamics across all zones --- #
+        total_healed = 0
+        total_deaths = 0
 
-        reward = -float(total_new_deaths)
+        for zone in self.zones:
+            has_medical = "medical_team" in zone["teams_present"]
+            healed, deaths = self._tick_health(zone, has_medical)
+            total_healed += healed
+            total_deaths += deaths
+
+        # --- detailed reward --- #
+        reward = (20.0 * total_healed) + (-50.0 * total_deaths)
+
         done = self.time >= self.max_time
         state = self.get_state()
+
+        # Attach step metrics to state for observability
+        state["step_metrics"] = {
+            "healed": total_healed,
+            "deaths": total_deaths,
+            "reward": reward,
+        }
 
         return state, reward, done
 
     @staticmethod
-    def _tick_health(zone: dict[str, Any]) -> int:
+    def _tick_health(zone: dict[str, Any], has_medical: bool) -> tuple[int, int]:
         """
-        Apply one tick of health degradation to a zone.
+        Apply one tick of population dynamics to a zone.
 
-        Transitions:
-            injured  → critical  (20%)
-            critical → deceased  (30%)
+        Args:
+            zone:        The zone dictionary (mutated in place).
+            has_medical: Whether a medical team is present.
 
         Returns:
-            Number of new deaths this tick.
+            (healed, deaths) counts for this tick.
         """
-        # critical → deceased (process first to avoid double-counting)
-        new_deceased = int(zone["critical"] * 0.30)
-        zone["critical"] -= new_deceased
-        zone["deceased"] += new_deceased
+        healed = 0
+        deaths = 0
 
-        # injured → critical
-        new_critical = int(zone["injured"] * 0.20)
-        zone["injured"] -= new_critical
-        zone["critical"] += new_critical
+        if has_medical:
+            # --- WITH medical team --- #
 
-        return new_deceased
+            # critical → deceased (reduced: 10%)
+            new_deceased = int(zone["critical"] * 0.10)
+            zone["critical"] -= new_deceased
+            zone["deceased"] += new_deceased
+            deaths += new_deceased
+
+            # critical → injured (stabilisation: 60% of remaining)
+            stabilised = int(zone["critical"] * 0.60)
+            zone["critical"] -= stabilised
+            zone["injured"] += stabilised
+
+            # injured → healthy (healing: 40%)
+            new_healthy = int(zone["injured"] * 0.40)
+            zone["injured"] -= new_healthy
+            zone["healthy"] += new_healthy
+            healed += new_healthy
+
+        else:
+            # --- WITHOUT medical team --- #
+
+            # critical → deceased (30%)
+            new_deceased = int(zone["critical"] * 0.30)
+            zone["critical"] -= new_deceased
+            zone["deceased"] += new_deceased
+            deaths += new_deceased
+
+            # injured → critical (20%)
+            new_critical = int(zone["injured"] * 0.20)
+            zone["injured"] -= new_critical
+            zone["critical"] += new_critical
+
+        return healed, deaths
 
     # ------------------------------------------------------------------ #
     #  State Observation                                                   #
