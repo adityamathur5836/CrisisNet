@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>CrisisNet Sentinel - Simulation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#003915",
+                        "inverse-primary": "#b91a24",
+                        "tertiary-fixed": "#ffdf9a",
+                        "on-background": "#dae2fd",
+                        "on-tertiary": "#3f2e00",
+                        "outline-variant": "#5b403e",
+                        "surface-container": "#171f33",
+                        "on-primary-container": "#5c0008",
+                        "on-tertiary-container": "#372700",
+                        "on-secondary-fixed": "#002109",
+                        "error-container": "#93000a",
+                        "tertiary": "#f7be1d",
+                        "on-secondary-fixed-variant": "#005321",
+                        "inverse-surface": "#dae2fd",
+                        "secondary-fixed-dim": "#4ae176",
+                        "tertiary-fixed-dim": "#f7be1d",
+                        "surface-container-lowest": "#060e20",
+                        "surface-tint": "#ffb3ad",
+                        "primary-container": "#ff5451",
+                        "primary": "#ffb3ad",
+                        "error": "#ffb4ab",
+                        "on-surface": "#dae2fd",
+                        "on-error": "#690005",
+                        "surface-dim": "#0b1326",
+                        "on-primary": "#68000a",
+                        "on-secondary-container": "#004119",
+                        "surface-container-low": "#131b2e",
+                        "surface-container-high": "#222a3d",
+                        "on-primary-fixed-variant": "#930013",
+                        "background": "#0b1326",
+                        "on-surface-variant": "#e4beba",
+                        "secondary": "#4ae176",
+                        "surface-variant": "#2d3449",
+                        "on-primary-fixed": "#410004",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#ffdad7",
+                        "secondary-fixed": "#6bff8f",
+                        "tertiary-container": "#b68a00",
+                        "inverse-on-surface": "#283044",
+                        "secondary-container": "#00b954",
+                        "surface-container-highest": "#2d3449",
+                        "surface-bright": "#31394d",
+                        "surface": "#0b1326",
+                        "primary-fixed-dim": "#ffb3ad",
+                        "on-tertiary-fixed": "#251a00",
+                        "outline": "#ab8986",
+                        "on-tertiary-fixed-variant": "#5a4300"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+
+        .pulse-error {
+            box-shadow: 0 0 0 0 rgba(255, 180, 171, 0.7);
+            animation: pulse-error 2s infinite;
+        }
+
+        @keyframes pulse-error {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 180, 171, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(255, 180, 171, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 180, 171, 0);
+            }
+        }
+
+        .map-gradient-overlay {
+            background: radial-gradient(circle at center, transparent 0%, #0b1326 95%);
+        }
+
+        .segmented-progress-bar div {
+            height: 100%;
+            width: 4px;
+            margin-right: 2px;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-surface font-body overflow-hidden h-screen flex flex-col">
+    <!-- Top Navigation Bar -->
+    <header
+        class="flex justify-between items-center w-full px-6 h-16 bg-[#0b1326] dark:bg-slate-950 flex-shrink-0 z-50">
+        <div class="flex items-center gap-8">
+            <h1 class="text-xl font-black uppercase tracking-tighter text-[#ffb3ad]">CrisisNet Sentinel</h1>
+            <nav class="hidden md:flex items-center gap-6 font-inter tracking-tight text-on-surface-variant">
+                <a class="text-[#ffb3ad] border-b-2 border-[#ffb3ad] pb-1" href="#">Dashboard</a>
+                <a class="text-[#e4beba] opacity-70 hover:bg-[#222a3d] transition-colors px-2 py-1 rounded"
+                    href="#">Simulation Log</a>
+                <a class="text-[#e4beba] opacity-70 hover:bg-[#222a3d] transition-colors px-2 py-1 rounded"
+                    href="#">Metrics</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <button
+                class="bg-gradient-to-br from-[#ffb3ad] to-[#ff5451] text-[#68000a] px-4 py-2 rounded-lg font-bold text-sm tracking-tight hover:scale-95 transition-transform active:duration-100">
+                Deploy Strategy
+            </button>
+            <div class="flex items-center gap-3 text-[#ffb3ad]">
+                <span class="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors"
+                    data-icon="timer">timer</span>
+                <span class="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors"
+                    data-icon="health_and_safety">health_and_safety</span>
+                <span class="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors"
+                    data-icon="settings">settings</span>
+                <img alt="Operator Profile" class="w-8 h-8 rounded-full border border-outline-variant/30"
+                    data-alt="close up of a professional emergency dispatch operator headshot with digital screen reflections on face"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDr1u6K24xjd9kEMs95GUibPNKbvn-W50qjRUrfzcaPx3phkvBBMyL6LPVebUn1mRxJAKndZHc48IrI85Gsr2jJeWAk11Qtp8N_DajykcAXJZIIuGQli0InXAVEHPw0SJ6SO1TINVR1Xxx50bPdkUc7VOx9-d99Rz7lpTlVadRIsvNn9_N42QGqN9yrC_uPj_jFepvtq9-TXiQ0zCi5O2qwKvajsHwoXzMUwO6llYEL82s2-n0YKsBg73C1pGFuKAykvNQmGWu3UFK9" />
+            </div>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Side Navigation (Simulation Controls & Assets) -->
+        <aside
+            class="fixed left-0 top-0 h-full flex flex-col py-6 bg-[#131b2e] dark:bg-slate-900 border-r border-[#5b403e]/15 w-64 z-40 pt-20">
+            <div class="px-6 mb-8">
+                <div class="flex items-center gap-3 mb-2">
+                    <img alt="CrisisNet Logo" class="w-10 h-10 rounded-lg bg-surface-container-highest p-1"
+                        data-alt="minimalist technical logo of a stylized shield with digital circuit patterns in red and slate tones"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMNA8bdiGOK-DS0lwTB6oj5THn_A6Fe4sUeluzODXeCim3X0ZtOQne5coMVWG5DT4DzVRMdmX72acuaibm-u-SkIx06CdXHbT4sxoGcWKITyh-2ErCoSJYPjplqCRhCuL7J5cwtGzlXeSiPtDwLT7cL6nY_0oTHr_FEbqnAzf-_LydEVe4vDd_sE5HI_ZyRC7zXDwTQVGOLW5_i6iLsyo4t149WPKc_gptUg37cyo8kmiNcr2iN3dXFUn_lf1C4IUgV9eutscHYael" />
+                    <div>
+                        <div class="text-lg font-bold text-[#ffb3ad]">Simulation Engine</div>
+                        <div class="text-[10px] text-on-surface-variant uppercase tracking-widest">Active Session:
+                            Alpha-9</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 space-y-1 px-4">
+                <div class="text-[10px] font-bold text-on-surface-variant/50 px-2 mb-2 tracking-[0.2em] uppercase">
+                    Control Deck</div>
+                <div class="bg-[#2d3449] border-l-4 border-[#ffb3ad] p-3 rounded-r-md mb-4">
+                    <div class="flex justify-between items-center gap-2">
+                        <button
+                            class="p-2 hover:bg-surface-container-high rounded transition-colors text-secondary"><span
+                                class="material-symbols-outlined" data-icon="play_arrow">play_arrow</span></button>
+                        <button
+                            class="p-2 hover:bg-surface-container-high rounded transition-colors text-tertiary"><span
+                                class="material-symbols-outlined" data-icon="pause">pause</span></button>
+                        <button
+                            class="p-2 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant"><span
+                                class="material-symbols-outlined" data-icon="step_over">step_over</span></button>
+                        <button class="p-2 hover:bg-surface-container-high rounded transition-colors text-error"><span
+                                class="material-symbols-outlined" data-icon="restart_alt">restart_alt</span></button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="text-[10px] font-bold text-on-surface-variant/50 px-2 tracking-[0.2em] uppercase block mb-2">Agent
+                            Logic</label>
+                        <select
+                            class="w-full bg-surface-container-low border-none text-on-surface text-sm rounded-md focus:ring-1 focus:ring-primary">
+                            <option>RL - Deep Sentinel v4</option>
+                            <option>Heuristic - Priority Path</option>
+                            <option>Random - Baseline</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label
+                            class="text-[10px] font-bold text-on-surface-variant/50 px-2 tracking-[0.2em] uppercase block mb-2">Core
+                            Assets</label>
+                        <div
+                            class="flex items-center gap-3 px-2 py-2 text-[#ffb3ad] bg-[#2d3449] border-l-4 border-[#ffb3ad] font-inter text-sm font-medium uppercase tracking-widest transition-all">
+                            <span class="material-symbols-outlined text-sm"
+                                data-icon="emergency_home">emergency_home</span>
+                            <span>Scenarios</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-3 px-2 py-2 text-[#e4beba] hover:bg-[#171f33] font-inter text-sm font-medium uppercase tracking-widest transition-all">
+                            <span class="material-symbols-outlined text-sm" data-icon="smart_toy">smart_toy</span>
+                            <span>Agents</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-3 px-2 py-2 text-[#e4beba] hover:bg-[#171f33] font-inter text-sm font-medium uppercase tracking-widest transition-all">
+                            <span class="material-symbols-outlined text-sm" data-icon="map">map</span>
+                            <span>Zones</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-3 px-2 py-2 text-[#e4beba] hover:bg-[#171f33] font-inter text-sm font-medium uppercase tracking-widest transition-all">
+                            <span class="material-symbols-outlined text-sm" data-icon="domain">domain</span>
+                            <span>Infrastructure</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 mt-auto pt-4 border-t border-outline-variant/15">
+                <button
+                    class="w-full bg-[#2d3449] text-[#ffb3ad] py-2 rounded font-bold text-xs uppercase tracking-widest hover:bg-[#222a3d] transition-colors">Start
+                    Simulation</button>
+                <div class="mt-4 space-y-1">
+                    <div
+                        class="flex items-center gap-3 px-2 py-1 text-[#e4beba] text-xs uppercase tracking-tighter opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="material-symbols-outlined text-sm" data-icon="memory">memory</span>
+                        <span>System Status</span>
+                    </div>
+                    <div
+                        class="flex items-center gap-3 px-2 py-1 text-[#e4beba] text-xs uppercase tracking-tighter opacity-70 hover:opacity-100 transition-opacity">
+                        <span class="material-symbols-outlined text-sm" data-icon="help_outline">help_outline</span>
+                        <span>Help</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="flex-1 ml-64 p-6 flex flex-col gap-6 overflow-hidden">
+            <div class="flex flex-1 gap-6 min-h-0">
+                <!-- Center Map Panel -->
+                <section class="flex-[3] bg-surface-container-low rounded-xl relative overflow-hidden group">
+                    <!-- Background Map Visual -->
+                    <div class="absolute inset-0 z-0">
+                        <img alt="Simulation Map" class="w-full h-full object-cover opacity-30 grayscale contrast-125"
+                            data-alt="top-down satellite view of a high-density urban city grid at night with glowing blue and red data lines overlay"
+                            data-location="Tokyo"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6jeJmKfEME4xcZCnLsAic-YRL4_uzaf0V4QJHF3lR4n8NHTTSuO4EdUnTNAv7NKDzayjFjA6EXEiMGVMt5F6mvH_86X5PBpyP2XDorIxX1bA9LXa4Ab79QnyLvD_f4OE9wxow_HSzlkVGdKwZVwyCABtuurNh2z_swbSmetz40J9xvmKvc3XHaLKqDJilY3XAX0mtuhP2fIidAWiMWMgTqqF3vBCcP0FtU0UQqeyL2DAHDfJ8Rnm6vNMHbznzaVev9pk-aX6ndE0L" />
+                        <div class="absolute inset-0 map-gradient-overlay"></div>
+                    </div>
+                    <!-- UI Overlay for Map -->
+                    <div class="absolute inset-0 z-10 p-6 pointer-events-none">
+                        <div class="flex justify-between items-start">
+                            <div
+                                class="bg-surface-container-lowest/80 backdrop-blur-md px-4 py-2 rounded border border-outline-variant/20">
+                                <div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                                    Active Perimeter</div>
+                                <div class="text-xl font-black text-on-surface">DISTRICT 7 - SHIBUYA</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div
+                                    class="bg-surface-container-lowest/80 backdrop-blur-md p-2 rounded border border-outline-variant/20 pointer-events-auto cursor-pointer hover:bg-surface-container-high">
+                                    <span class="material-symbols-outlined text-secondary"
+                                        data-icon="layers">layers</span>
+                                </div>
+                                <div
+                                    class="bg-surface-container-lowest/80 backdrop-blur-md p-2 rounded border border-outline-variant/20 pointer-events-auto cursor-pointer hover:bg-surface-container-high">
+                                    <span class="material-symbols-outlined text-primary"
+                                        data-icon="my_location">my_location</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Map Pins -->
+                        <!-- Zone 1: Critical -->
+                        <div class="absolute top-[20%] left-[30%] pointer-events-auto flex flex-col items-center">
+                            <div class="w-4 h-4 bg-error rounded-full pulse-error relative">
+                                <div class="absolute -inset-2 rounded-full border border-error/50 animate-ping"></div>
+                            </div>
+                            <div
+                                class="mt-2 bg-surface-container-highest/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-error border border-error/30">
+                                ZONE A: CRITICAL</div>
+                        </div>
+                        <!-- Zone 2: Severe -->
+                        <div class="absolute top-[60%] left-[15%] pointer-events-auto flex flex-col items-center">
+                            <div class="w-4 h-4 bg-primary-container rounded-full relative">
+                                <div class="absolute -inset-1 rounded-full border border-primary-container/50"></div>
+                            </div>
+                            <div
+                                class="mt-2 bg-surface-container-highest/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-primary-container border border-primary-container/30">
+                                ZONE B: SEVERE</div>
+                        </div>
+                        <!-- Zone 3: Watch -->
+                        <div class="absolute top-[45%] left-[55%] pointer-events-auto flex flex-col items-center">
+                            <div class="w-4 h-4 bg-tertiary rounded-full relative"></div>
+                            <div
+                                class="mt-2 bg-surface-container-highest/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-tertiary border border-tertiary/30">
+                                ZONE C: WATCH</div>
+                        </div>
+                        <!-- Zone 4: Stable -->
+                        <div class="absolute top-[75%] left-[70%] pointer-events-auto flex flex-col items-center">
+                            <div class="w-4 h-4 bg-secondary rounded-full relative"></div>
+                            <div
+                                class="mt-2 bg-surface-container-highest/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-secondary border border-secondary/30">
+                                ZONE D: STABLE</div>
+                        </div>
+                        <!-- Zone 5: Stable -->
+                        <div class="absolute top-[15%] left-[80%] pointer-events-auto flex flex-col items-center">
+                            <div class="w-4 h-4 bg-secondary rounded-full relative"></div>
+                            <div
+                                class="mt-2 bg-surface-container-highest/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-secondary border border-secondary/30">
+                                ZONE E: STABLE</div>
+                        </div>
+                    </div>
+                </section>
+                <!-- Right Metrics Panel -->
+                <aside class="flex-1 flex flex-col gap-4 min-w-[320px]">
+                    <!-- Survival Rate Hero -->
+                    <div
+                        class="bg-surface-container-low p-6 rounded-xl border-t border-surface-bright/20 shadow-xl flex flex-col items-center">
+                        <div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] mb-4">
+                            Simulation Health</div>
+                        <div class="relative w-32 h-32 flex items-center justify-center">
+                            <svg class="absolute inset-0 w-full h-full transform -rotate-90">
+                                <circle class="text-surface-container-highest" cx="64" cy="64" fill="transparent" r="60"
+                                    stroke="currentColor" stroke-width="8"></circle>
+                                <circle class="text-secondary" cx="64" cy="64" fill="transparent" r="60"
+                                    stroke="currentColor" stroke-dasharray="377" stroke-dashoffset="83"
+                                    stroke-width="8"></circle>
+                            </svg>
+                            <div class="text-4xl font-black tracking-tighter">78<span class="text-lg font-bold">%</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs font-medium text-secondary uppercase tracking-widest">Survival Rate
+                        </div>
+                    </div>
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-surface-container p-4 rounded-lg">
+                            <div class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                                Active Deaths</div>
+                            <div class="text-xl font-bold text-error tracking-tight">1,402</div>
+                        </div>
+                        <div class="bg-surface-container p-4 rounded-lg">
+                            <div class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                                Total Relocated</div>
+                            <div class="text-xl font-bold text-secondary tracking-tight">12.4k</div>
+                        </div>
+                    </div>
+                    <!-- Resource & Status Stack -->
+                    <div class="bg-surface-container-low p-5 rounded-xl space-y-6">
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-end">
+                                <span
+                                    class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Medical
+                                    Resources</span>
+                                <span class="text-xs font-bold text-on-surface">64%</span>
+                            </div>
+                            <div
+                                class="h-4 bg-surface-container-lowest flex segmented-progress-bar rounded-sm overflow-hidden">
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container"></div>
+                                <div class="bg-secondary-container opacity-30"></div>
+                                <div class="bg-secondary-container opacity-30"></div>
+                                <div class="bg-secondary-container opacity-30"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-end">
+                                <span
+                                    class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Disease
+                                    Risk Index</span>
+                                <span class="text-xs font-bold text-tertiary">MODERATE</span>
+                            </div>
+                            <div class="h-2 bg-surface-container-lowest rounded-full overflow-hidden">
+                                <div class="h-full bg-tertiary w-3/5"></div>
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-outline-variant/15">
+                            <div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">
+                                Field Team Status</div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-secondary"></div>
+                                        <span class="opacity-80">Alpha-One</span>
+                                    </div>
+                                    <span class="font-mono text-[10px] opacity-60">LOC: 35.6 N, 139.7 E</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-error pulse-error"></div>
+                                        <span class="opacity-80">Delta-Zero</span>
+                                    </div>
+                                    <span class="font-mono text-[10px] opacity-60">SIGNAL LOST</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+            <!-- Bottom Decision Log Timeline -->
+            <footer
+                class="h-48 bg-surface-container-low rounded-xl border border-outline-variant/10 flex flex-col overflow-hidden">
+                <div
+                    class="px-6 py-3 border-b border-outline-variant/15 flex justify-between items-center bg-surface-container">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.3em] text-[#ffb3ad]">Decision Log &amp;
+                        Reward Timeline</h3>
+                    <div class="flex gap-4 items-center">
+                        <span class="text-[10px] text-on-surface-variant uppercase">Filtering: High Reward Only</span>
+                        <span class="material-symbols-outlined text-sm cursor-pointer hover:text-on-surface"
+                            data-icon="filter_list">filter_list</span>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-2">
+                    <!-- Log Item 1 -->
+                    <div
+                        class="flex gap-4 items-start p-3 hover:bg-surface-container-high transition-colors group rounded-md">
+                        <div class="text-[10px] font-mono text-on-surface-variant opacity-40 pt-1">12:44:02.11</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span
+                                    class="text-xs font-bold uppercase tracking-widest text-secondary">[REDEPLOY]</span>
+                                <span class="text-xs font-medium">Agent RL-42 moved to Shibuya Medical Center.</span>
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant leading-relaxed">Reasoning: Resource density
+                                below 20% threshold. Immediate intervention required to prevent zone transition to
+                                Critical. Expected reward: +150 Survival Index.</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-secondary">+150.00</div>
+                            <div class="text-[9px] uppercase opacity-40">Reward</div>
+                        </div>
+                    </div>
+                    <!-- Log Item 2 -->
+                    <div
+                        class="flex gap-4 items-start p-3 hover:bg-surface-container-high transition-colors group rounded-md">
+                        <div class="text-[10px] font-mono text-on-surface-variant opacity-40 pt-1">12:43:58.45</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold uppercase tracking-widest text-error">[CASUALTY]</span>
+                                <span class="text-xs font-medium">Evacuation fail at Block-G.</span>
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant leading-relaxed">Outcome: Fire spread reached
+                                Zone A extraction point before arrival. 14 casualties recorded. Penalty applied to Agent
+                                Heuristic-7.</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-error">-420.00</div>
+                            <div class="text-[9px] uppercase opacity-40">Penalty</div>
+                        </div>
+                    </div>
+                    <!-- Log Item 3 -->
+                    <div
+                        class="flex gap-4 items-start p-3 hover:bg-surface-container-high transition-colors group rounded-md">
+                        <div class="text-[10px] font-mono text-on-surface-variant opacity-40 pt-1">12:43:12.02</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span
+                                    class="text-xs font-bold uppercase tracking-widest text-tertiary">[RATIONING]</span>
+                                <span class="text-xs font-medium">Policy update: Energy conservation mode active in
+                                    District 3.</span>
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant leading-relaxed">Reasoning: Grid stability
+                                critical. Automated shutdown of non-essential cooling systems to maintain medical core
+                                uptime.</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-tertiary">+12.00</div>
+                            <div class="text-[9px] uppercase opacity-40">Reward</div>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+</body>
+
+</html>
