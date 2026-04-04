@@ -74,8 +74,9 @@ class CrisisNetEnv:
         fuel = self._rng.randint(50, 300)          # litres
 
         # --- infrastructure --- #
-        road_access = self._rng.choice([True, False])
-        hospital_capacity = self._rng.randint(10, 100) if road_access else self._rng.randint(0, 30)
+        # road_access is a float 0.0–1.0 (1.0 = fully operational)
+        road_access = round(self._rng.uniform(0.4, 1.0), 2)
+        hospital_capacity = self._rng.randint(10, 100)
 
         return {
             "id": zone_id,
@@ -96,31 +97,28 @@ class CrisisNetEnv:
     #  Simulation Step                                                     #
     # ------------------------------------------------------------------ #
 
+    # Road access threshold below which delivery efficiency drops
+    ROAD_DEGRADATION_RATE: float = 0.05
+    ROAD_EFFICIENCY_THRESHOLD: float = 0.5
+
     def step(self, action: dict[str, Any]) -> tuple[dict[str, Any], float, bool]:
         """
         Advance the simulation by one time step.
 
-        Each tick applies three systems in order:
-            1. Resource consumption  – food & water deplete.
-            2. Resource effects       – starvation & supply shortages.
-            3. Population dynamics    – health transitions.
+        Each tick applies five systems in order:
+            1. Action processing      – apply the agent's chosen action.
+            2. Infrastructure decay   – road_access degrades.
+            3. Resource consumption    – food & water deplete (scaled by roads).
+            4. Resource / infra effects – starvation, shortages, overload.
+            5. Population dynamics     – health transitions.
 
-        Population dynamics (per zone):
-            Without medical team:
-                - 20% injured  → critical
-                - 30% critical → deceased
-            With medical team:
-                - 40% injured  → healthy   (healing)
-                - 60% critical → injured   (stabilisation)
-                - 10% critical → deceased  (reduced death rate)
-
-        Resource effects (per zone):
-            - food = 0  → 5% healthy → deceased  (starvation)
-            - medical = 0 → 15% injured → critical (no supplies)
+        Infrastructure effects:
+            - road_access decreases by ROAD_DEGRADATION_RATE each tick.
+            - road_access < 0.5 → resource deliveries are less efficient.
+            - hospital overloaded (critical > capacity) → +15% death rate.
 
         Args:
             action: An action dictionary (validated externally).
-                    Not yet used — reserved for future expansion.
 
         Returns:
             A tuple of (state, reward, done):
@@ -128,26 +126,38 @@ class CrisisNetEnv:
                 reward – weighted score:
                          +20 per heal, −50 per death,
                          −30 per starvation death,
-                         −10 per depletion event.
+                         −10 per depletion event,
+                         −15 per hospital overload event.
                 done   – True if time has reached max_time.
         """
         self.time += 1
+
+        # 1. Process action (currently only repair_road)
+        self._apply_action(action)
 
         total_healed = 0
         total_deaths = 0
         total_starvation_deaths = 0
         total_depletion_events = 0
+        total_overload_deaths = 0
 
         for zone in self.zones:
-            # 1. Consume resources
+            # 2. Infrastructure decay
+            self._tick_infrastructure(zone)
+
+            # 3. Consume resources (scaled by road access)
             self._tick_resources(zone)
 
-            # 2. Resource-shortage effects
+            # 4a. Resource-shortage effects
             starvation, depletions = self._tick_resource_effects(zone)
             total_starvation_deaths += starvation
             total_depletion_events += depletions
 
-            # 3. Population dynamics
+            # 4b. Hospital overload
+            overload_deaths = self._tick_hospital_overload(zone)
+            total_overload_deaths += overload_deaths
+
+            # 5. Population dynamics
             has_medical = "medical_team" in zone["teams_present"]
             healed, deaths = self._tick_health(zone, has_medical)
             total_healed += healed
@@ -159,6 +169,7 @@ class CrisisNetEnv:
             + (-50.0 * total_deaths)
             + (-30.0 * total_starvation_deaths)
             + (-10.0 * total_depletion_events)
+            + (-15.0 * total_overload_deaths)
         )
 
         done = self.time >= self.max_time
@@ -169,27 +180,100 @@ class CrisisNetEnv:
             "healed": total_healed,
             "deaths": total_deaths,
             "starvation_deaths": total_starvation_deaths,
+            "overload_deaths": total_overload_deaths,
             "depletion_events": total_depletion_events,
             "reward": reward,
         }
 
         return state, reward, done
 
+    # ------------------------------------------------------------------ #
+    #  Action Processing                                                   #
+    # ------------------------------------------------------------------ #
+
+    def _apply_action(self, action: dict[str, Any]) -> None:
+        """Process a single agent action."""
+        action_type = action.get("type")
+
+        if action_type == "repair_road":
+            zone = self._get_zone(action.get("zone"))
+            if zone is not None:
+                # Repair restores 0.20 road access, capped at 1.0
+                zone["road_access"] = min(1.0, round(zone["road_access"] + 0.20, 2))
+
+        # Other action types will be handled here in future expansions.
+
+    def _get_zone(self, zone_id: int | None) -> dict[str, Any] | None:
+        """Look up a zone by id. Returns None if not found."""
+        if zone_id is None:
+            return None
+        for zone in self.zones:
+            if zone["id"] == zone_id:
+                return zone
+        return None
+
+    # ------------------------------------------------------------------ #
+    #  Infrastructure                                                      #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _tick_infrastructure(zone: dict[str, Any]) -> None:
+        """
+        Degrade infrastructure each tick.
+
+        road_access decreases by ROAD_DEGRADATION_RATE (0.05) per step,
+        floored at 0.0.
+        """
+        zone["road_access"] = max(0.0, round(zone["road_access"] - 0.05, 2))
+
+    @staticmethod
+    def _tick_hospital_overload(zone: dict[str, Any]) -> int:
+        """
+        Check for hospital overload.
+
+        If critical patients exceed hospital_capacity, the excess
+        face an additional 15% death rate.
+
+        Returns:
+            Number of additional deaths from overload.
+        """
+        overflow = zone["critical"] - zone["hospital_capacity"]
+        if overflow <= 0:
+            return 0
+
+        overload_dead = int(overflow * 0.15)
+        zone["critical"] -= overload_dead
+        zone["deceased"] += overload_dead
+        return overload_dead
+
     @staticmethod
     def _tick_resources(zone: dict[str, Any]) -> None:
         """
         Consume resources for one time step.
 
-        Consumption is proportional to the living population:
+        Consumption is proportional to the living population.
+        If road_access < ROAD_EFFICIENCY_THRESHOLD (0.5), incoming
+        supply delivery is reduced — modelled as increased effective
+        consumption (supplies spoil / get lost in transit).
+
+        Base rates:
             food  – 1 ration per 10 people
             water – 2 litres per 10 people
-            fuel  – flat 5 units (generator / transport)
+            fuel  – flat 5 units
         """
         living = zone["healthy"] + zone["injured"] + zone["critical"]
 
-        food_consumed = max(1, living // 10)
-        water_consumed = max(1, living // 5)
-        fuel_consumed = 5
+        # Delivery penalty: poor roads → up to 2× consumption
+        road = zone["road_access"]
+        if road < 0.5:
+            # Linear scale: road=0 → 2x, road=0.5 → 1x
+            delivery_penalty = 1.0 + (0.5 - road) * 2.0
+        else:
+            delivery_penalty = 1.0
+
+        food_consumed = int(max(1, living // 10) * delivery_penalty)
+        water_consumed = int(max(1, living // 5) * delivery_penalty)
+        fuel_consumed = int(5 * delivery_penalty)
 
         zone["food"] = max(0, zone["food"] - food_consumed)
         zone["water"] = max(0, zone["water"] - water_consumed)
