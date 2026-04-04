@@ -194,14 +194,35 @@ class CrisisNetEnv:
     def _apply_action(self, action: dict[str, Any]) -> None:
         """Process a single agent action."""
         action_type = action.get("type")
+        zone = self._get_zone(action.get("zone"))
 
-        if action_type == "repair_road":
-            zone = self._get_zone(action.get("zone"))
-            if zone is not None:
-                # Repair restores 0.20 road access, capped at 1.0
-                zone["road_access"] = min(1.0, round(zone["road_access"] + 0.20, 2))
+        if action_type == "repair_road" and zone is not None:
+            # Repair restores 0.20 road access, capped at 1.0
+            zone["road_access"] = min(1.0, round(zone["road_access"] + 0.20, 2))
 
-        # Other action types will be handled here in future expansions.
+        elif action_type == "deploy_medical" and zone is not None:
+            if "medical_team" not in zone["teams_present"]:
+                zone["teams_present"].append("medical_team")
+
+        elif action_type == "deploy_rescue" and zone is not None:
+            if "rescue_team" not in zone["teams_present"]:
+                zone["teams_present"].append("rescue_team")
+
+        elif action_type == "deploy_engineering" and zone is not None:
+            if "engineering_team" not in zone["teams_present"]:
+                zone["teams_present"].append("engineering_team")
+
+        elif action_type == "allocate_food" and zone is not None:
+            amount = int(action.get("amount") or 0)
+            zone["food"] += amount
+
+        elif action_type == "allocate_water" and zone is not None:
+            amount = int(action.get("amount") or 0)
+            zone["water"] += amount
+
+        elif action_type == "allocate_medicine" and zone is not None:
+            amount = int(action.get("amount") or 0)
+            zone["medical"] += amount
 
     def _get_zone(self, zone_id: int | None) -> dict[str, Any] | None:
         """Look up a zone by id. Returns None if not found."""
