@@ -100,17 +100,23 @@ class CrisisNetEnv:
         """
         Advance the simulation by one time step.
 
-        Population dynamics depend on whether a medical team is present
-        in each zone:
+        Each tick applies three systems in order:
+            1. Resource consumption  – food & water deplete.
+            2. Resource effects       – starvation & supply shortages.
+            3. Population dynamics    – health transitions.
 
-        Without medical team:
-            - 20% injured  → critical
-            - 30% critical → deceased
+        Population dynamics (per zone):
+            Without medical team:
+                - 20% injured  → critical
+                - 30% critical → deceased
+            With medical team:
+                - 40% injured  → healthy   (healing)
+                - 60% critical → injured   (stabilisation)
+                - 10% critical → deceased  (reduced death rate)
 
-        With medical team:
-            - 40% injured  → healthy   (healing)
-            - 60% critical → injured   (stabilisation)
-            - 10% critical → deceased  (reduced death rate)
+        Resource effects (per zone):
+            - food = 0  → 5% healthy → deceased  (starvation)
+            - medical = 0 → 15% injured → critical (no supplies)
 
         Args:
             action: An action dictionary (validated externally).
@@ -119,23 +125,41 @@ class CrisisNetEnv:
         Returns:
             A tuple of (state, reward, done):
                 state  – the new environment state.
-                reward – weighted score: +20 per heal, −50 per death.
+                reward – weighted score:
+                         +20 per heal, −50 per death,
+                         −30 per starvation death,
+                         −10 per depletion event.
                 done   – True if time has reached max_time.
         """
         self.time += 1
 
-        # --- population dynamics across all zones --- #
         total_healed = 0
         total_deaths = 0
+        total_starvation_deaths = 0
+        total_depletion_events = 0
 
         for zone in self.zones:
+            # 1. Consume resources
+            self._tick_resources(zone)
+
+            # 2. Resource-shortage effects
+            starvation, depletions = self._tick_resource_effects(zone)
+            total_starvation_deaths += starvation
+            total_depletion_events += depletions
+
+            # 3. Population dynamics
             has_medical = "medical_team" in zone["teams_present"]
             healed, deaths = self._tick_health(zone, has_medical)
             total_healed += healed
             total_deaths += deaths
 
         # --- detailed reward --- #
-        reward = (20.0 * total_healed) + (-50.0 * total_deaths)
+        reward = (
+            (20.0 * total_healed)
+            + (-50.0 * total_deaths)
+            + (-30.0 * total_starvation_deaths)
+            + (-10.0 * total_depletion_events)
+        )
 
         done = self.time >= self.max_time
         state = self.get_state()
@@ -144,10 +168,71 @@ class CrisisNetEnv:
         state["step_metrics"] = {
             "healed": total_healed,
             "deaths": total_deaths,
+            "starvation_deaths": total_starvation_deaths,
+            "depletion_events": total_depletion_events,
             "reward": reward,
         }
 
         return state, reward, done
+
+    @staticmethod
+    def _tick_resources(zone: dict[str, Any]) -> None:
+        """
+        Consume resources for one time step.
+
+        Consumption is proportional to the living population:
+            food  – 1 ration per 10 people
+            water – 2 litres per 10 people
+            fuel  – flat 5 units (generator / transport)
+        """
+        living = zone["healthy"] + zone["injured"] + zone["critical"]
+
+        food_consumed = max(1, living // 10)
+        water_consumed = max(1, living // 5)
+        fuel_consumed = 5
+
+        zone["food"] = max(0, zone["food"] - food_consumed)
+        zone["water"] = max(0, zone["water"] - water_consumed)
+        zone["fuel"] = max(0, zone["fuel"] - fuel_consumed)
+
+    @staticmethod
+    def _tick_resource_effects(zone: dict[str, Any]) -> tuple[int, int]:
+        """
+        Apply consequences of resource shortages.
+
+        Effects:
+            food = 0    → 5% of healthy die (starvation)
+            medical = 0 → 15% of injured become critical (no supplies)
+
+        Returns:
+            (starvation_deaths, depletion_events) for this zone.
+        """
+        starvation_deaths = 0
+        depletion_events = 0
+
+        # --- starvation (no food) --- #
+        if zone["food"] == 0:
+            starved = int(zone["healthy"] * 0.05)
+            zone["healthy"] -= starved
+            zone["deceased"] += starved
+            starvation_deaths += starved
+            depletion_events += 1
+
+        # --- no water worsens injuries --- #
+        if zone["water"] == 0:
+            dehydrated = int(zone["injured"] * 0.10)
+            zone["injured"] -= dehydrated
+            zone["critical"] += dehydrated
+            depletion_events += 1
+
+        # --- no medical supplies --- #
+        if zone["medical"] == 0:
+            worsened = int(zone["injured"] * 0.15)
+            zone["injured"] -= worsened
+            zone["critical"] += worsened
+            depletion_events += 1
+
+        return starvation_deaths, depletion_events
 
     @staticmethod
     def _tick_health(zone: dict[str, Any], has_medical: bool) -> tuple[int, int]:
