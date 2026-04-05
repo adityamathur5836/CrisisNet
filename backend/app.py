@@ -45,13 +45,23 @@ def get_state():
 @app.route("/step", methods=["POST"])
 def step_simulation():
     """
-    Advance the simulation by one step using the provided action.
-    Expects JSON: {"type": "repair_road", "zone": 1, "amount": 100}
+    Advance the simulation by one step.
+    Expects JSON either with an action: {"type": "repair_road", "zone": 1, "amount": 100}
+    Or an agent string to auto-generate: {"agent": "HeuristicAgent"}
     """
     try:
-        action = request.json
-        if not action or "type" not in action:
-            return jsonify({"error": "Invalid action format. 'type' is required."}), 400
+        action = request.json or {}
+        
+        # If an agent name is provided instead of a raw action type, use that agent to decide.
+        if "agent" in action:
+            agent_name = action["agent"]
+            if agent_name in AVAILABLE_AGENTS:
+                agent_instance = AVAILABLE_AGENTS[agent_name]()
+                action = agent_instance.decide(env.get_state())
+            else:
+                return jsonify({"error": f"Invalid agent '{agent_name}'"}), 400
+        elif not action or "type" not in action:
+            return jsonify({"error": "Invalid action format. 'type' or 'agent' is required."}), 400
 
         # Optional: Prevent stepping past max_time
         if env.time >= env.max_time:
