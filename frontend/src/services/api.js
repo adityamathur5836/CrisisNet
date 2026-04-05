@@ -19,4 +19,9 @@ export const resetSimulation = async (seed = 42) => {
   return response.data;
 };
 
+export const fetchZone = async (id) => {
+  const response = await API.get(`/zone/${id}`);
+  return response.data;
+};
+
 export default API;
