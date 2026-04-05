@@ -5,6 +5,8 @@ import Home from './pages/Home';
 import Agents from './pages/Agents';
 import Zones from './pages/Zones';
 
+import Infrastructure from './pages/Infrastructure';
+
 function App() {
   return (
     <Router>
@@ -13,6 +15,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/zones" element={<Zones />} />
+          <Route path="/infrastructure" element={<Infrastructure />} />
         </Routes>
       </MainLayout>
     </Router>

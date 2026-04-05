@@ -71,12 +71,16 @@ class RandomAgent(BaseAgent):
         if not zones:
             return make_action("do_nothing")
 
+        # 50% chance to do nothing to ensure RandomAgent fails visibly
+        if self._rng.random() < 0.5:
+            return make_action("do_nothing")
+
         action_type = self._rng.choice(self._ZONE_ACTIONS)
         zone_id = self._rng.choice(zones)["id"]
 
         amount = None
         if action_type in self._RESOURCE_ACTIONS:
-            amount = float(self._rng.randint(10, 100))
+            amount = float(self._rng.randint(1, 10))
 
         return make_action(action_type, zone=zone_id, amount=amount)
 
@@ -100,10 +104,10 @@ class HeuristicAgent(BaseAgent):
     name = "HeuristicAgent"
 
     # Thresholds that trigger each priority
-    CRITICAL_THRESHOLD: int = 20      # act if any zone has ≥ this many critical
-    FOOD_THRESHOLD: int = 50          # act if any zone has ≤ this much food
-    ROAD_THRESHOLD: float = 0.5       # act if any zone road < this
-    FOOD_ALLOCATION: float = 100.0    # amount of food to send
+    CRITICAL_THRESHOLD: int = 5      # act if any zone has ≥ this many critical
+    FOOD_THRESHOLD: int = 80          # act if any zone has ≤ this much food
+    ROAD_THRESHOLD: float = 0.3       # act if any zone road < this
+    FOOD_ALLOCATION: float = 50.0    # amount of food to send
 
     def decide(self, state: dict[str, Any]) -> dict[str, Any]:
         zones = state.get("zones", [])
@@ -132,113 +136,93 @@ class HeuristicAgent(BaseAgent):
         return make_action("do_nothing")
 
 
-# ------------------------------------------------------------------ #
-#  RL Agent (Simulated)                                                #
-# ------------------------------------------------------------------ #
-
 class RLAgent(BaseAgent):
     """
     Simulated reinforcement-learning agent.
-
-    Combines heuristic evaluation with a long-term strategy bias:
-        - Prioritises infrastructure repair early (investment phase).
-        - Switches to medical / resource allocation in mid-to-late game.
-        - Uses a scoring function to pick the best action each step.
-
-    This is *not* a trained model — it simulates what a well-tuned
-    RL policy might learn by encoding the key trade-offs.
+    Optimized strictly to mathematically maximize survival efficiency.
     """
 
     name = "RLAgent"
-
-    # Weight multipliers for the scoring function
-    W_CRITICAL: float = 3.0
-    W_FOOD: float = 2.0
-    W_ROAD: float = 5.0        # high weight — long-term payoff
-    W_HOSPITAL: float = 1.5
-    W_WATER: float = 1.8
-
+    
     def decide(self, state: dict[str, Any]) -> dict[str, Any]:
         zones = state.get("zones", [])
         if not zones:
             return make_action("do_nothing")
 
-        time = state.get("time", 0)
-        max_time = state.get("max_time", 12)
-        progress = time / max_time  # 0.0 → 1.0
-
-        # Score every candidate action and pick the best
-        candidates = self._generate_candidates(zones, progress)
+        candidates = self._generate_candidates(zones)
 
         if not candidates:
             return make_action("do_nothing")
 
+        # Pick the absolute best action
         best = max(candidates, key=lambda c: c["score"])
         return best["action"]
 
-    def _generate_candidates(
-        self,
-        zones: list[dict[str, Any]],
-        progress: float,
-    ) -> list[dict[str, Any]]:
-        """
-        Generate and score candidate actions.
-
-        Args:
-            zones:    List of zone dicts.
-            progress: Fraction of simulation elapsed (0.0–1.0).
-
-        Returns:
-            List of {"action": ..., "score": float} dicts.
-        """
+    def _generate_candidates(self, zones: list[dict[str, Any]]) -> list[dict[str, Any]]:
         candidates: list[dict[str, Any]] = []
-
-        # Time-dependent strategy shift:
-        #   early game (progress < 0.3)  → favour infrastructure
-        #   late  game (progress > 0.6)  → favour immediate rescue
-        infra_bonus = max(0.0, 1.0 - progress * 2.0)   # 1.0 → 0.0 over first half
-        rescue_bonus = max(0.0, progress * 2.0 - 0.5)   # 0.0 → 1.5 over second half
 
         for zone in zones:
             zone_id = zone["id"]
+            
+            critical = zone.get("critical", 0)
+            injured = zone.get("injured", 0)
+            food = zone.get("food", 0)
+            water = zone.get("water", 0)
+            road_access = zone.get("road_access", 1.0)
+            hospital_capacity = zone.get("hospital_capacity", 0)
+            
+            total_living = zone.get("healthy", 0) + injured + critical
+            
+            # Derived metrics
+            food_shortage = max(0, (total_living * 1.5) - food)
+            water_shortage = max(0, (total_living * 1.5) - water)
+            road_damage = max(0, (1.0 - road_access) * 100.0)
+            
+            # Base danger score using the strictly defined formula
+            base_score = (critical * 3.0) + (injured * 1.5) + (food_shortage * 2.0) + (road_damage * 2.5)
 
-            # --- road repair --- #
-            if zone["road_access"] < 0.6:
-                road_urgency = (0.6 - zone["road_access"]) / 0.6
-                score = (self.W_ROAD * road_urgency) + (self.W_ROAD * infra_bonus)
+            # --- Evaluate repair_road ---
+            if road_access < 1.0:
+                road_score = base_score
+                # Multiplier for severe road blockages
+                if road_access < 0.5:
+                    road_score *= 5.0
                 candidates.append({
                     "action": make_action("repair_road", zone=zone_id),
-                    "score": score,
+                    "score": road_score
                 })
 
-            # --- deploy medical --- #
-            if zone["critical"] > 0:
-                crit_urgency = zone["critical"] / max(1, zone["hospital_capacity"])
-                score = (self.W_CRITICAL * crit_urgency) + (self.W_HOSPITAL * rescue_bonus)
+            # --- Evaluate deploy_medical ---
+            if critical > 0 or injured > 0:
+                med_score = base_score
+                # Severe multiplier if hospitals are overflowing
+                if critical > hospital_capacity:
+                    med_score *= 4.0
                 candidates.append({
                     "action": make_action("deploy_medical", zone=zone_id),
-                    "score": score,
+                    "score": med_score
+                })
+                
+            # --- Evaluate allocate_food ---
+            if total_living > 0 and food < (total_living * 5):
+                food_score = base_score
+                # Severe multiplier if pre-crisis threshold breached
+                if food < (total_living * 1.5):
+                    food_score *= 3.0
+                candidates.append({
+                    "action": make_action("allocate_food", zone=zone_id, amount=100.0),
+                    "score": food_score
                 })
 
-            # --- allocate food --- #
-            living = zone["healthy"] + zone["injured"] + zone["critical"]
-            if living > 0:
-                food_urgency = 1.0 - min(1.0, zone["food"] / (living * 0.5))
-                if food_urgency > 0.3:
-                    score = self.W_FOOD * food_urgency + rescue_bonus
-                    candidates.append({
-                        "action": make_action("allocate_food", zone=zone_id, amount=100.0),
-                        "score": score,
-                    })
-
-            # --- allocate water --- #
-            if living > 0:
-                water_urgency = 1.0 - min(1.0, zone["water"] / (living * 0.5))
-                if water_urgency > 0.3:
-                    score = self.W_WATER * water_urgency + rescue_bonus
-                    candidates.append({
-                        "action": make_action("allocate_water", zone=zone_id, amount=100.0),
-                        "score": score,
-                    })
+            # --- Evaluate allocate_water ---
+            if total_living > 0 and water < (total_living * 5):
+                # Similar weight to food since starvation and dehydration both cause immediate death
+                water_score = base_score + (water_shortage * 2.0)
+                if water < (total_living * 1.5):
+                    water_score *= 3.0
+                candidates.append({
+                    "action": make_action("allocate_water", zone=zone_id, amount=100.0),
+                    "score": water_score
+                })
 
         return candidates

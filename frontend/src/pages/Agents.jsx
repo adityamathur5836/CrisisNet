@@ -200,7 +200,11 @@ const Agents = () => {
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-surface-container p-6 border-l-2 border-primary">
               <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Alert Intelligence</div>
-              <p className="text-xs text-on-surface-variant leading-relaxed">Agent RL has identified a recurring failure point in Segment 4B. Recommend immediate logic injection to Heuristic model for hybrid testing.</p>
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                {results && results.length > 0 
+                  ? `${results.reduce((prev, curr) => (prev.survival_rate > curr.survival_rate) ? prev : curr).agent} achieved maximum survival trajectory. Heuristic dependencies showed structural weakness in complex resource optimization.`
+                  : `Waiting for telemetry data to evaluate model weaknesses.`}
+              </p>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchZone } from '../services/api';
+import { fetchZone, stepSimulation } from '../services/api';
 
 const Zones = () => {
   const [selectedZoneId, setSelectedZoneId] = useState(1);
@@ -44,6 +44,17 @@ const Zones = () => {
   const roadClearance = Math.round(z.road_access * 100);
   const hospCapPct = z.hospital_capacity > 0 ? Math.round((z.critical / z.hospital_capacity) * 100) : 0;
 
+  const handleAction = async (actionType) => {
+    try {
+      await stepSimulation({ type: actionType, zone: selectedZoneId });
+      // The interval will catch up the state within 1.5s, or we could fetch immediately
+      const data = await fetchZone(selectedZoneId);
+      setZoneData(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <>
       {/*  Zone Header  */}
@@ -58,6 +69,17 @@ const Zones = () => {
                   <span className="text-label-sm font-normal text-on-surface-variant uppercase tracking-widest border border-outline-variant/20 px-2 py-0.5 rounded">ID: NW-42{z.id}</span>
               </h1>
               <p className="text-on-surface-variant mt-1">Population Density: {totalPop > 2000 ? 'High' : 'Moderate'} | Alert Level: {isCriticalAlert ? 'Critical' : 'Stable'}</p>
+          </div>
+          <div className="flex gap-2 mb-4 md:mb-0">
+             <button onClick={() => handleAction('evacuate')} className="bg-surface-container-high text-on-surface px-4 py-2 text-xs rounded font-bold uppercase tracking-widest border border-outline-variant/15 hover:bg-surface-variant transition-colors">
+                Evacuate
+             </button>
+             <button onClick={() => handleAction('deploy_medical')} className="kinetic-gradient text-on-primary px-4 py-2 text-xs rounded font-bold uppercase tracking-widest shadow-xl">
+                Deploy Reinforcements
+             </button>
+             <button onClick={() => handleAction('repair_road')} className="bg-surface-container-highest text-on-surface px-4 py-2 text-xs rounded font-bold uppercase tracking-widest border border-outline-variant/15 hover:bg-surface-variant transition-colors">
+                Manage
+             </button>
           </div>
           <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map(id => (
