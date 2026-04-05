@@ -24,4 +24,10 @@ export const fetchZone = async (id) => {
   return response.data;
 };
 
+export const fetchCompareAgents = async (seed) => {
+  const url = seed ? `/compare_agents?seed=${seed}` : '/compare_agents';
+  const response = await API.get(url);
+  return response.data;
+};
+
 export default API;
