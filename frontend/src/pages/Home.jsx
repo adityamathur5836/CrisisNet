@@ -114,7 +114,7 @@ const Home = () => {
     const payload = {
         type: manualAction,
         zone: parseInt(manualZone, 10),
-        amount: manualAction.includes("allocate") ? 100.0 : null
+        amount: manualAction.includes("allocate") ? 1000.0 : null
     };
     handleStep(payload);
   };
@@ -224,7 +224,7 @@ const Home = () => {
               <div className="bg-surface-container-low p-5 rounded-xl space-y-6">
                   <div className="space-y-3">
                       <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Global Medical</span>
+                          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Medical Supply</span>
                           <span className="text-xs font-bold text-on-surface">{medicalPercent}%</span>
                       </div>
                       <div className="h-4 bg-surface-container-lowest flex segmented-progress-bar rounded-sm overflow-hidden">
@@ -239,7 +239,7 @@ const Home = () => {
                           value={selectedAgent} 
                           onChange={(e) => setSelectedAgent(e.target.value)} 
                           className="w-full bg-surface-container border border-outline-variant/20 text-on-surface text-xs font-bold uppercase tracking-widest rounded-md focus:ring-1 focus:ring-primary p-2">
-                          <option value="RLAgent">RL-Agent (Sentinel)</option>
+                          <option value="RLAgent">RL-Agent (Optimised)</option>
                           <option value="HeuristicAgent">Heuristic Agent</option>
                           <option value="RandomAgent">Random Agent</option>
                       </select>
@@ -260,13 +260,12 @@ const Home = () => {
                           </select>
                       </div>
                       <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Order Directive</label>
+                          <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Action Type</label>
                           <select required value={manualAction} onChange={(e) => setManualAction(e.target.value)} className="w-full bg-surface-container border border-outline-variant/10 text-on-surface text-sm rounded p-2">
                               <option value="deploy_medical">Deploy Medical Reinforcements</option>
                               <option value="repair_road">Repair Infrastructure</option>
                               <option value="allocate_food">Allocate Food Rations</option>
                               <option value="allocate_water">Allocate Water Supply</option>
-                              <option value="evacuate">Initiate Evacuation</option>
                           </select>
                       </div>
                       <button type="submit" disabled={isPlaying} className="w-full mt-2 bg-surface-variant text-on-surface py-2 rounded font-bold text-xs uppercase tracking-widest hover:bg-surface-container-highest transition-colors border border-outline-variant/30 disabled:opacity-50">

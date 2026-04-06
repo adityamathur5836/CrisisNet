@@ -75,7 +75,8 @@ def step_simulation():
         return jsonify({
             "state": state,
             "reward": reward,
-            "done": done
+            "done": done,
+            "action_taken": action,
         }), 200
     except Exception as e:
         logger.error(f"Error in /step: {e}")

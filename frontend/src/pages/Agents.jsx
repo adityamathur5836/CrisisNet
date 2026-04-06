@@ -4,36 +4,30 @@ import { fetchCompareAgents } from '../services/api';
 const AGENT_CONFIG = {
   RandomAgent: {
     title: "Random Agent",
-    subtitle: "Baseline Model",
-    version: "V1.0.4-R",
-    desc: "Stochastic decision pathing based on weighted uniform distribution without environment feedback.",
+    subtitle: "Stochastic Baseline",
+    version: "v1.0",
+    desc: "Selects random actions with 50% idle probability. No situational awareness or environment feedback. Serves as a performance floor.",
     icon: "casino",
     color: "error",
-    quote: "Performance is erratic and unsustainable. Recommended only for control group comparisons in low-risk scenarios.",
-    responseTime: "12ms",
-    efficiency: "22.4%"
+    quote: "Unreliable and inconsistent. Used only as a control group to validate that intelligent agents provide measurable improvement.",
   },
   HeuristicAgent: {
     title: "Heuristic Agent",
-    subtitle: "Expert System",
-    version: "V4.2.1-H",
-    desc: "Decision logic based on hard-coded expert rulesets and optimized search trees.",
+    subtitle: "Rule-Based Policy",
+    version: "v1.0",
+    desc: "Fixed-priority decision rules: critical patients first, then food allocation, water allocation, and infrastructure repair.",
     icon: "account_tree",
     color: "tertiary",
-    quote: "Stable and predictable. Strong performance in known scenarios but lacks adaptability for novel 'Black Swan' events.",
-    responseTime: "145ms",
-    efficiency: "64.8%"
+    quote: "Consistent and interpretable. Strong baseline performance but does not model environment dynamics or predict resource depletion.",
   },
   RLAgent: {
-    title: "RL Agent (Sentinel)",
-    subtitle: "Neural Network",
-    version: "V9.5.0-Σ",
-    desc: "Deep Reinforcement Learning utilizing proximal policy optimization and multi-modal sensory input.",
+    title: "RL Agent",
+    subtitle: "Optimised Policy",
+    version: "v2.0",
+    desc: "RL-inspired policy controller exploiting environment mechanics: permanent medical coverage rush, predictive depletion estimation, and scaled resource allocation.",
     icon: "psychology",
     color: "secondary",
-    quote: "Optimal performance across all variables. Exhibited emerging collaborative behaviors with local infrastructure nodes.",
-    responseTime: "28ms",
-    efficiency: "94.1%"
+    quote: "Highest survival rate across all test seeds. Optimised through environment dynamics analysis to converge on the reward-maximising strategy.",
   }
 };
 
@@ -104,7 +98,7 @@ const Agents = () => {
           
           {isLoading && !results && (
              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-sm rounded-xl border border-outline-variant/10">
-                <span className="text-on-surface font-black uppercase tracking-widest animate-pulse">Running Physics Engine...</span>
+                <span className="text-on-surface font-black uppercase tracking-widest animate-pulse">Running Simulation...</span>
              </div>
           )}
 
@@ -146,7 +140,7 @@ const Agents = () => {
                     <div>
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">
                         <span>Reward vs Time</span>
-                        <span className={`text-${config.color}`}>{agentResult.total_reward > 0 ? '+' : ''}{agentResult.total_reward.toFixed(1)} σ</span>
+                        <span className={`text-${config.color}`}>{agentResult.total_reward > 0 ? '+' : ''}{agentResult.total_reward.toFixed(0)}</span>
                       </div>
                       <div className="h-16 w-full flex items-end gap-1 px-1">
                         {agentResult.reward_history.map((val, i) => {
@@ -176,8 +170,8 @@ const Agents = () => {
                     </div>
                     <div className="bg-surface-container-low p-3">
                       <span className="material-symbols-outlined text-on-surface-variant text-sm mb-1" data-icon="analytics">analytics</span>
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/70">Efficiency</div>
-                      <div className="text-lg font-bold">{config.efficiency}</div>
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/70">Total Deaths</div>
+                      <div className="text-lg font-bold">{agentResult.total_deaths}</div>
                     </div>
                   </div>
                   <div className={`bg-${config.color}/10 border border-${config.color}/20 p-4`}>
@@ -189,25 +183,18 @@ const Agents = () => {
           })}
         </div>
 
-        {/*  Bottom Data Table Section (Asymmetric)  */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-12 opacity-80 pointer-events-none">
-          <div className="lg:col-span-8 bg-surface-container-low p-6">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface mb-6">Historical Trajectory Analysis</h3>
-            <div className="w-full h-64 bg-surface-container relative overflow-hidden flex items-center justify-center">
-               <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest bg-background/80 px-3 py-1">Advanced Subroutines Disabled</span>
-            </div>
+        {/*  Bottom Summary  */}
+        {results && results.length > 0 && (
+          <div className="mt-12 bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface mb-4">Benchmark Summary</h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              {(() => {
+                const best = results.reduce((prev, curr) => (prev.survival_rate > curr.survival_rate) ? prev : curr);
+                return `${best.agent} achieved the highest survival rate at ${(best.survival_rate * 100).toFixed(1)}% with ${best.total_healed} total healed and ${best.total_deaths} deaths. Seed: ${currentSeed}.`;
+              })()}
+            </p>
           </div>
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-surface-container p-6 border-l-2 border-primary">
-              <div className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Alert Intelligence</div>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                {results && results.length > 0 
-                  ? `${results.reduce((prev, curr) => (prev.survival_rate > curr.survival_rate) ? prev : curr).agent} achieved maximum survival trajectory. Heuristic dependencies showed structural weakness in complex resource optimization.`
-                  : `Waiting for telemetry data to evaluate model weaknesses.`}
-              </p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </>
   );

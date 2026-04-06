@@ -71,14 +71,11 @@ const Zones = () => {
               <p className="text-on-surface-variant mt-1">Population Density: {totalPop > 2000 ? 'High' : 'Moderate'} | Alert Level: {isCriticalAlert ? 'Critical' : 'Stable'}</p>
           </div>
           <div className="flex gap-2 mb-4 md:mb-0">
-             <button onClick={() => handleAction('evacuate')} className="bg-surface-container-high text-on-surface px-4 py-2 text-xs rounded font-bold uppercase tracking-widest border border-outline-variant/15 hover:bg-surface-variant transition-colors">
-                Evacuate
-             </button>
              <button onClick={() => handleAction('deploy_medical')} className="kinetic-gradient text-on-primary px-4 py-2 text-xs rounded font-bold uppercase tracking-widest shadow-xl">
-                Deploy Reinforcements
+                Deploy Medical
              </button>
              <button onClick={() => handleAction('repair_road')} className="bg-surface-container-highest text-on-surface px-4 py-2 text-xs rounded font-bold uppercase tracking-widest border border-outline-variant/15 hover:bg-surface-variant transition-colors">
-                Manage
+                Repair Roads
              </button>
           </div>
           <div className="flex gap-2">
@@ -110,7 +107,7 @@ const Zones = () => {
               <div className="relative z-20 p-6 flex flex-col h-full justify-between pointer-events-none">
                   <div className="flex justify-between items-start pointer-events-auto">
                       <div className="glass-overlay p-4 rounded-xl border border-white/5">
-                          <h3 className="text-label-md font-bold uppercase tracking-widest text-primary mb-2">Geospatial Awareness</h3>
+                          <h3 className="text-label-md font-bold uppercase tracking-widest text-primary mb-2">Geospatial Awareness <span className="text-[9px] text-on-surface-variant font-normal">(Simulated)</span></h3>
                           <div className="space-y-2">
                               <div className="flex items-center gap-4">
                                   <span className="text-xs text-on-surface-variant">CENTROID</span>
@@ -327,7 +324,7 @@ const Zones = () => {
                           <span className="material-symbols-outlined text-secondary" data-icon="bolt">bolt</span>
                           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Active</span>
                       </div>
-                      <div className="text-sm font-bold text-on-surface mb-1 uppercase tracking-tight">Power Grid</div>
+                      <div className="text-sm font-bold text-on-surface mb-1 uppercase tracking-tight">Power Grid <span className="text-[9px] text-on-surface-variant font-normal">(Sim.)</span></div>
                       <div className="text-[10px] text-on-surface-variant uppercase tracking-widest">Backup Online</div>
                   </div>
                   <div className="p-4 bg-surface-container-low rounded border border-outline-variant/10">
@@ -335,7 +332,7 @@ const Zones = () => {
                           <span className="material-symbols-outlined text-secondary" data-icon="sensors">sensors</span>
                           <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Active</span>
                       </div>
-                      <div className="text-sm font-bold text-on-surface mb-1 uppercase tracking-tight">Comms</div>
+                      <div className="text-sm font-bold text-on-surface mb-1 uppercase tracking-tight">Comms <span className="text-[9px] text-on-surface-variant font-normal">(Sim.)</span></div>
                       <div className="text-[10px] text-on-surface-variant uppercase tracking-widest">Relay Active</div>
                   </div>
               </div>

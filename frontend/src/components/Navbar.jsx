@@ -17,16 +17,11 @@ const Navbar = () => {
                     <Link className={`transition-colors px-2 py-1 rounded ${isActive('/zones') ? 'text-[#ffb3ad] border-b-2 border-[#ffb3ad] pb-1' : 'text-[#e4beba] opacity-70 hover:bg-[#222a3d]'}`} to="/zones">Zones</Link>
                 </nav>
             </div>
-            <div className="flex items-center gap-4">
-                <button className="bg-gradient-to-br from-[#ffb3ad] to-[#ff5451] text-[#68000a] px-4 py-2 rounded-lg font-bold text-sm tracking-tight hover:scale-95 transition-transform active:duration-100">
-                    Deploy Strategy
-                </button>
-                <div className="flex items-center gap-3 text-[#ffb3ad]">
-                    <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="timer">timer</span>
-                    <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="health_and_safety">health_and_safety</span>
-                    <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="settings">settings</span>
-                    <img alt="Operator Profile" className="w-8 h-8 rounded-full border border-outline-variant/30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDr1u6K24xjd9kEMs95GUibPNKbvn-W50qjRUrfzcaPx3phkvBBMyL6LPVebUn1mRxJAKndZHc48IrI85Gsr2jJeWAk11Qtp8N_DajykcAXJZIIuGQli0InXAVEHPw0SJ6SO1TINVR1Xxx50bPdkUc7VOx9-d99Rz7lpTlVadRIsvNn9_N42QGqN9yrC_uPj_jFepvtq9-TXiQ0zCi5O2qwKvajsHwoXzMUwO6llYEL82s2-n0YKsBg73C1pGFuKAykvNQmGWu3UFK9" />
-                </div>
+            <div className="flex items-center gap-3 text-[#ffb3ad]">
+                <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="timer">timer</span>
+                <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="health_and_safety">health_and_safety</span>
+                <span className="material-symbols-outlined cursor-pointer hover:bg-[#222a3d] p-1 rounded transition-colors" data-icon="settings">settings</span>
+                <img alt="Operator Profile" className="w-8 h-8 rounded-full border border-outline-variant/30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDr1u6K24xjd9kEMs95GUibPNKbvn-W50qjRUrfzcaPx3phkvBBMyL6LPVebUn1mRxJAKndZHc48IrI85Gsr2jJeWAk11Qtp8N_DajykcAXJZIIuGQli0InXAVEHPw0SJ6SO1TINVR1Xxx50bPdkUc7VOx9-d99Rz7lpTlVadRIsvNn9_N42QGqN9yrC_uPj_jFepvtq9-TXiQ0zCi5O2qwKvajsHwoXzMUwO6llYEL82s2-n0YKsBg73C1pGFuKAykvNQmGWu3UFK9" />
             </div>
         </header>
     );
