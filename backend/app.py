@@ -1,7 +1,8 @@
 """
-CrisisNet API Bridge
+CrisisNet API
 
 Provides a REST API to interact with the CrisisNet simulation backend.
+Supports step-by-step simulation, agent-driven runs, and benchmarking.
 """
 
 from flask import Flask, request, jsonify
@@ -10,12 +11,13 @@ import logging
 
 from backend.environment import CrisisNetEnv
 from backend.simulation import run_simulation, compare_agents
-from backend.agents import RandomAgent, HeuristicAgent, RLAgent
+from backend.agents import RandomAgent, HeuristicAgent, OptimalAgent, RLAgent
 
 # Map agent names to their classes
 AVAILABLE_AGENTS = {
     "RandomAgent": RandomAgent,
     "HeuristicAgent": HeuristicAgent,
+    "OptimalAgent": OptimalAgent,
     "RLAgent": RLAgent,
 }
 
@@ -122,7 +124,8 @@ def compare_agents_endpoint():
         agents_to_run = [
             RandomAgent(seed=seed),
             HeuristicAgent(),
-            RLAgent()
+            OptimalAgent(),
+            RLAgent(),
         ]
         
         results = compare_agents(agents_to_run, seed=seed, verbose=False)

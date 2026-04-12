@@ -1,3 +1,10 @@
 flask
 flask-cors
 numpy
+gymnasium
+stable-baselines3
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+requests

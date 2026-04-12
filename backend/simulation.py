@@ -2,7 +2,8 @@
 CrisisNet Simulation Runner
 
 Provides run_simulation() to execute a full experiment with any agent,
-and compare_agents() to benchmark multiple agents side-by-side.
+compare_agents() to benchmark multiple agents side-by-side, and
+benchmark_all() to run all agents across all difficulty tasks.
 """
 
 from typing import Any
@@ -162,6 +163,123 @@ def compare_agents(
     return results
 
 
+# ------------------------------------------------------------------ #
+#  Benchmark All (agents × tasks)                                      #
+# ------------------------------------------------------------------ #
+
+def benchmark_all(
+    seeds: list[int] | None = None,
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """
+    Run all agents across all difficulty tasks and aggregate results.
+
+    Args:
+        seeds: list of seeds to average over. Default [42, 99, 123].
+        verbose: Print step-by-step details.
+
+    Returns:
+        {
+            "results": [
+                {
+                    "agent": str,
+                    "task": str,
+                    "avg_survival_rate": float,
+                    "avg_reward": float,
+                    "avg_score": float,
+                },
+                ...
+            ],
+            "summary": str
+        }
+    """
+    from backend.agents import RandomAgent, HeuristicAgent, OptimalAgent, RLAgent
+    from backend.gym_env import CrisisNetGymEnv
+
+    if seeds is None:
+        seeds = [42, 99, 123]
+
+    agents_config = [
+        ("RandomAgent", lambda s: RandomAgent(seed=s)),
+        ("HeuristicAgent", lambda s: HeuristicAgent()),
+        ("OptimalAgent", lambda s: OptimalAgent()),
+        ("RLAgent", lambda s: RLAgent()),
+    ]
+
+    tasks = ["easy", "medium", "hard"]
+    all_results = []
+
+    for agent_name, agent_factory in agents_config:
+        for task in tasks:
+            survival_rates = []
+            rewards = []
+            scores = []
+
+            for seed in seeds:
+                env = CrisisNetGymEnv(task=task, seed=seed)
+                obs, _ = env.reset()
+
+                agent = agent_factory(seed)
+                total_reward = 0.0
+                done = False
+
+                while not done:
+                    state = env.raw_env.get_state()
+                    action_dict = agent.decide(state)
+
+                    # Convert dict action to discrete for gym env
+                    from backend.gym_env import ACTION_TYPES, NUM_ZONES
+                    atype = action_dict.get("type", "do_nothing")
+                    zone_id = action_dict.get("zone", 1) or 1
+
+                    if atype in ACTION_TYPES:
+                        type_idx = ACTION_TYPES.index(atype)
+                        discrete_action = type_idx * NUM_ZONES + (zone_id - 1)
+                    else:
+                        discrete_action = 0  # default deploy_medical zone 1
+
+                    obs, reward, done, truncated, info = env.step(discrete_action)
+                    total_reward += reward
+
+                survivors = sum(
+                    z["healthy"] + z["injured"] + z["critical"]
+                    for z in env.raw_env.get_state()["zones"]
+                )
+                survival_rate = survivors / max(env._initial_population, 1)
+                score = env.compute_score()
+
+                survival_rates.append(survival_rate)
+                rewards.append(total_reward)
+                scores.append(score)
+
+            all_results.append({
+                "agent": agent_name,
+                "task": task,
+                "avg_survival_rate": round(sum(survival_rates) / len(survival_rates), 4),
+                "avg_reward": round(sum(rewards) / len(rewards), 2),
+                "avg_score": round(sum(scores) / len(scores), 4),
+            })
+
+    # Build summary table
+    lines = [
+        f"{'Agent':<18s} {'Task':<8s} {'Survival%':>10s} {'Avg Reward':>12s} {'Score':>8s}",
+        "-" * 60,
+    ]
+    for r in all_results:
+        lines.append(
+            f"{r['agent']:<18s} {r['task']:<8s} "
+            f"{r['avg_survival_rate']*100:>9.1f}% "
+            f"{r['avg_reward']:>12.0f} "
+            f"{r['avg_score']:>7.3f}"
+        )
+
+    summary = "\n".join(lines)
+    if verbose:
+        print(summary)
+
+    return {"results": all_results, "summary": summary}
+
+
 def print_comparison(results: list[dict[str, Any]]) -> None:
     """Pretty-print a comparison table from compare_agents() output."""
 
@@ -185,9 +303,9 @@ def print_comparison(results: list[dict[str, Any]]) -> None:
 # ------------------------------------------------------------------ #
 
 if __name__ == "__main__":
-    from backend.agents import RandomAgent, HeuristicAgent, RLAgent
+    from backend.agents import RandomAgent, HeuristicAgent, OptimalAgent, RLAgent
 
-    agents = [RandomAgent(seed=99), HeuristicAgent(), RLAgent()]
+    agents = [RandomAgent(seed=99), HeuristicAgent(), OptimalAgent(), RLAgent()]
 
     print("CrisisNet Simulation — Agent Comparison")
     print("=" * 50)
@@ -201,3 +319,8 @@ if __name__ == "__main__":
         print(f"\n--- {r['agent']} ---")
         print(f"  Actions: {r['actions_taken']}")
         print(f"  Reward curve: {[int(x) for x in r['reward_history']]}")
+
+    print("\n\n" + "=" * 60)
+    print("  Full Benchmark (all agents × all tasks)")
+    print("=" * 60)
+    benchmark_all(verbose=True)

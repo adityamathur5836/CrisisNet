@@ -1,0 +1,22 @@
+name: crisisnet
+version: "1.0.0"
+description: >
+  RL environment for disaster response simulation. An agent manages
+  5 crisis zones — deploying medical teams, allocating food/water/medicine,
+  and repairing infrastructure to maximise survival over 12 time steps.
+  Features realistic population dynamics, resource consumption, infrastructure
+  decay, and hospital overload mechanics.
+author: "Team CrisisNet"
+tasks:
+  - easy
+  - medium
+  - hard
+observation_space:
+  type: array
+  shape: [55]
+  dtype: float32
+  range: [0.0, 1.0]
+action_space:
+  type: discrete
+  n: 25
+reward_range: [-500.0, 200.0]
